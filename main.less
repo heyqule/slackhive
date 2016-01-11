@@ -1,0 +1,63 @@
+* {
+  max-width:100%;
+}
+body {
+  margin:1rem;
+  padding:0;
+  min-width:640px;
+}
+
+.pin-block {
+  margin-bottom:1rem;
+  border:1px solid red;
+
+  .msg-block:nth-child(even) {
+    background:#ddd;
+  }
+
+  .msg-block.is-pin {
+    background: rgba(255, 0, 0, 0.2);
+    font-weight: normal;
+  }
+
+  .before-pin, .after-pin, .msg-close {
+    display:none;
+  }
+
+  .msg-close {
+    background: #f00;
+    color:#fff;
+    height:2rem;
+    text-align:center;
+    font-weight:bold;
+    line-height:2rem;
+    vertical-align: middle;
+  }
+}
+
+.clickable {
+  cursor:pointer;
+}
+
+.msg-block {
+  > div
+  {
+    display:inline-block;
+  }
+
+  .msg-meta
+  {
+    width:150px;
+    vertical-align: middle;
+
+    span {
+      display:block;
+    }
+  }
+  .msg-content
+  {
+    margin-left:10px;
+    width: ~"calc(100% - 10px - 150px)";
+    vertical-align: middle;
+  }
+}
