@@ -68,6 +68,7 @@ class Slack_Bot extends Bot
                     break;
             }
             $pinIds[] = $pid;
+            $pin->success = false;
             $this->data[$pid] = $pin;
         }
 
@@ -132,40 +133,50 @@ class Slack_Bot extends Bot
     {
         foreach($this->data as $providerCid => $pin)
         {
-            $html = '';
-            if($pin->type == 'message')
+            try
             {
-                $message = $pin->message;
-                $html .= $this->_processBeforeMsg($providerCid, $pin);
+                $html = '';
+                if ($pin->type == 'message')
+                {
+                    $message = $pin->message;
+                    $html .= $this->_processBeforeMsg($providerCid, $pin);
 
-                $html .= $this->_processMessage($message,'is-pin');
+                    $html .= $this->_processMessage($message, 'is-pin');
 
-                $html .= $this->_processAfterMsg($providerCid, $pin);
+                    $html .= $this->_processAfterMsg($providerCid, $pin);
 
-                $postData['title'] = str_replace(array('<','>'),'',$message->text);
-                $postData['content'] = $html;
-                $postData['timestamp'] = date(DT_FORMAT, $message->ts);
+                    $postData['title'] = str_replace(array('<', '>'), '', $message->text);
+                    $postData['content'] = $html;
+                    $postData['timestamp'] = date(DT_FORMAT, $message->ts);
+                }
+
+                if ($pin->type == 'file')
+                {
+                    $file = $pin->file;
+                    $html .= $this->_processFile($file);
+
+                    $postData['title'] = str_replace(array('<', '>'), '', $file->title);
+                    $postData['content'] = $html;
+                    $postData['timestamp'] = date(DT_FORMAT, $file->timestamp);
+                }
+
+                $post = new Post();
+                $post->id = null;
+                $post->title = $postData['title'];
+                $post->provider_id = $this->provider_id;
+                $post->provider_cid = $providerCid;
+                $post->contents = $postData['content'];
+                $post->create_time = $postData['timestamp'];
+                $post->update_time = $postData['timestamp'];
+                $post->save();
+
+                $this->data[$providerCid]->success = true;
+                $this->numberChanged++;
             }
-
-            if($pin->type == 'file')
+            catch(Exception $e)
             {
-                $file = $pin->file;
-                $html .= $this->_processFile($file);
-
-                $postData['title'] = str_replace(array('<','>'),'',$file->title);
-                $postData['content'] = $html;
-                $postData['timestamp'] = date(DT_FORMAT, $file->timestamp);
+                Event::write($this->provider_id,Event::E_ERROR,$e->getMessage());
             }
-
-            $post = new Post();
-            $post->id = null;
-            $post->title = $postData['title'];
-            $post->provider_id = $this->provider_id;
-            $post->provider_cid = $providerCid;
-            $post->contents = $postData['content'];
-            $post->create_time = $postData['timestamp'];
-            $post->update_time = $postData['timestamp'];
-            $post->save();
         }
 
         $postCollection = new Post_Collection();
@@ -294,8 +305,13 @@ class Slack_Bot extends Bot
 
     protected function _removePins()
     {
-        foreach($this->rawPinList as $pin)
+        foreach($this->data as $pin)
         {
+            if($pin->success == false)
+            {
+                continue;
+            }
+            
             $request = array(
                 'token' => Slackbot\Setting::API_AUTH_TOKEN,
                 'channel' => Slackbot\Setting::THE_B_CHANNEL,
