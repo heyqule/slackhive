@@ -31,6 +31,8 @@ class Slack_Bot extends Bot
 
     protected $api;
 
+    protected $rawPinList;
+
     public function __construct($id,$config)
     {
         parent::__construct($id);
@@ -48,11 +50,11 @@ class Slack_Bot extends Bot
         );
 
         //Fetch All Pins
-        $pinList = $this->api->getPins($request);
+        $this->rawPinList = $this->api->getPins($request);
 
         $pinIds = array();
         //Fetch all saved pins based on ID
-        foreach($pinList->items as $pin)
+        foreach($this->rawPinList->items as $pin)
         {
             switch ($pin->type)
             {
@@ -166,8 +168,11 @@ class Slack_Bot extends Bot
             $post->save();
         }
 
+        $postCollection = new Post_Collection();
+        $postCollection->reindexAll();
+
         //Remove saved pin from slack (TO BE DISCUSS) when success
-        $this->_removePins();
+        //$this->_removePins();
     }
 
     protected function _processBeforeMsg($key,$pin)
@@ -216,9 +221,10 @@ class Slack_Bot extends Bot
         if(property_exists($message, 'subtype') && $message->subtype == 'pinned_item')
         {
             $attachment = $message->attachments[0];
+            $attachment->text = $this->_processText($attachment->text);
             if(property_exists($attachment,'author_icon'))
             {
-                $html .= "pinned <img src=\"{$attachment->author_icon}\"/>{$attachment->author_name}: {$attachment->text}";
+                $html .= "pinned <img src=\"{$attachment->author_icon}\"/> {$attachment->author_name}: {$attachment->text}";
             }
             elseif(property_exists($attachment,'author_surname'))
             {
@@ -227,7 +233,7 @@ class Slack_Bot extends Bot
         }
         else
         {
-            $html .= htmlentities($message->text,ENT_HTML5);
+            $html .= $this->_processText($message->text);
 
             if (!empty($message->attachments))
             {
@@ -288,7 +294,24 @@ class Slack_Bot extends Bot
 
     protected function _removePins()
     {
+        foreach($this->rawPinList as $pin)
+        {
+            $request = array(
+                'token' => Slackbot\Setting::API_AUTH_TOKEN,
+                'channel' => Slackbot\Setting::THE_B_CHANNEL,
+            );
 
+            if($pin->type == 'message')
+            {
+                $request['timestamp'] = $pin->message->ts;
+            }
+            elseif($pin->type == 'file')
+            {
+                $request['file'] = $pin->file->id;
+            }
+
+            $this->api->unPin($request);
+        }
     }
 
 
@@ -311,6 +334,98 @@ class Slack_Bot extends Bot
         }
 
         return $rcName;
+    }
+
+    protected function _processText($text)
+    {
+        $text = $this->_processLinks($text);
+        $text = $this->_processUserText($text);
+        return $text;
+    }
+
+    /**
+     * <http link> => <a> link
+     * @param $text
+     * @return string
+     */
+    protected function _processLinks($text)
+    {
+        if(strpos($text,'<http') === false)
+        {
+            return $text;
+        }
+
+        $tokens = explode(' ',$text);
+        foreach($tokens as $key => $token)
+        {
+            if(strpos($token,'<http') !== false)
+            {
+                $token = str_replace(array('<', '>'), '', $token);
+                $token = "<a href=\"{$token}\">{$token}</a>";
+            }
+
+            $tokens[$key] = $token;
+        }
+        $text = implode(' ',$tokens);
+        return $text;
+    }
+
+    /**
+     * Process <@U0CKTLCKA|something> => <img> name
+     * @param $text
+     * @return string
+     */
+    protected function _processUserText($text)
+    {
+        if(strpos($text,'<@') === false)
+        {
+            return $text;
+        }
+
+        $tokens = explode(' ',$text);
+        foreach($tokens as $key => $token)
+        {
+
+            if(!empty($token) && strpos($token,'<@') !== false)
+            {
+                $userString = substr($token,0,strpos($token,'>')+1);
+                $endPart = substr($token,strpos($token,'>')+1);
+                $user = str_replace(array('<@','>'),'',$userString);
+                $userToken = array();
+
+                if(strpos('|',$userString) !== false)
+                {
+                    $userToken = explode('|',$userString);
+                    $user = $userToken[0];
+                }
+
+                $member = $this->slackUser->getMemberById($user);
+                $name = $this->slackUser->getName($member);
+
+                //pick stored user id
+                if(empty($name) && sizeof($userToken))
+                {
+                    $name = $userToken[1];
+                }
+
+                if(empty($name))
+                {
+                    $name = 'A rage quited loser';
+                }
+
+                $token = '';
+                if(property_exists($member,'profile') && property_exists($member->profile,'image_72'))
+                {
+                    $token .= "<img src=\"{$member->profile->image_72}\" /> ";
+                }
+
+                $token .= $name.$endPart;
+            }
+
+            $tokens[$key] = $token;
+        }
+        $text = implode(' ',$tokens);
+        return $text;
     }
 
 }

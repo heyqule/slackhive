@@ -15,6 +15,34 @@ if(!empty($_GET['run']))
 {
     $bot->run();
 }
+
+
+$postCollection = new \Saywut\Post_Collection();
+
+$limit = 50;
+$offset = 0;
+$anchorUrl = '?';
+$query = '';
+if(!empty($_GET['query']))
+{
+    $postCollection->addFullText($_GET['query']);
+    $anchorUrl = '?query='.urlencode($_GET['query']);
+    $query = htmlentities($_GET['query'],ENT_HTML5);
+}
+
+$page = 0;
+if(isset($_GET['page']))
+{
+    $page = $_GET['page'];
+    $offset = $page * $limit;
+}
+
+
+$posts = $postCollection->loadByQuery($offset,$limit);
+
+$size = $postCollection->getSize();
+
+
 ?>
 
 <!DOCTYPE html>
@@ -25,29 +53,57 @@ if(!empty($_GET['run']))
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet">
     <link href="main.css" rel="stylesheet">
+    <title>ʕつ ͡◔ ᴥ ͡◔ʔつ Bindom</title>
+    <meta name="Description" content="wut deescrippteion da ryu wanta?">
 </head>
 <body>
 
-<h1>Da B Pindom</h1>
+<h1>ʕつ ͡◔ ᴥ ͡◔ʔつ Bindom</h1>
 
 <section class="controller">
-
+    <form id="search" method="get" action="/">
+        Searchere: <input type="text" name="query" value="<?php echo $query ?>" /> <input type="submit" />
+    </form>
+    <menu>
+        Page:
+        <?php
+        for($i = 0; $i*$limit < $size; $i++) {
+            if($i == $page)
+                echo ($i+1).' | ';
+            else
+                echo '<a href="' . $anchorUrl . '&page='.$i.'">'.($i+1).'</a> | ';
+        }
+        ?>
+    </menu>
 </section>
 <section class="container">
 <?php
-
-$postCollection = new \Saywut\Post_Collection();
-
-$posts = $postCollection->loadByQuery(0,100);
 
 foreach($posts as $post)
 {
     echo "<article class=\"pin-block\">
             {$post->contents}
-            <div class=\"msg-close\">xxxx CLOSE xxxx</div>
+            <div class=\"msg-close\">◟ʕ´∀`ʔ◞ CLOSE  ◟ʕ´∀`ʔ ◞</div>
           </article>";
 }
 ?>
+</section>
+<section class="controller">
+    <form id="search" method="get" action="/">
+        Searchere: <input type="text" name="query" value="<?php echo $query ?>" /> <input type="submit" />
+    </form>
+    <menu>
+        Page:
+        <?php
+        for($i = 0; $i*$limit < $size; $i++) {
+            if($i == $page)
+                echo ($i+1).' | ';
+            else
+                echo '<a href="' . $anchorUrl . '&page='.$i.'">'.($i+1).'</a> | ';
+        }
+        ?>
+    </menu>
+</section>
 
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js" type="text/javascript"></script>

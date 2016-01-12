@@ -33,6 +33,11 @@ class Api
         return $this->_request('pins.list',$data);
     }
 
+    public function unPin($data)
+    {
+        return $this->_request('pins.remove',$data);
+    }
+
     /**
      *
      * @param $method
