@@ -7,7 +7,7 @@ $(document).ready(function() {
     $('.is-pin.clickable').click(function(){
         var jThis = $(this);
         var jThisParent = jThis.parent();
-        jThisParent.find('.before-pin, .after-pin, .msg-close').show();
+        jThisParent.find('.before-pin, .after-pin, .msg-close').fadeIn();
         jThisParent.find('.msg-close').addClass('clickable');
         jThis.removeClass('clickable');
 
@@ -15,7 +15,7 @@ $(document).ready(function() {
         jThisParent.find('.msg-close').on('click',function() {
             var jThisClose = $(this);
             jThisClose.removeClass('clickable');
-            $(jThisClose.parent()).find('.before-pin, .after-pin, .msg-close').hide();
+            $(jThisClose.parent()).find('.before-pin, .after-pin, .msg-close').fadeOut();
             $(document).scrollTop(jThisClose.parent().position().top);
             jThisClose.parent().addClass('clickable');
         });

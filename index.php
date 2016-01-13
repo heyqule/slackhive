@@ -77,15 +77,30 @@ $size = $postCollection->getSize();
     </menu>
 </section>
 <section class="container">
-<?php
 
-foreach($posts as $post)
-{
-    echo "<article class=\"pin-block\">
-            {$post->contents}
-            <div class=\"msg-close\">◟ʕ´∀`ʔ◞ CLOSE  ◟ʕ´∀`ʔ ◞</div>
-          </article>";
-}
+<?php foreach($posts as $post):
+    $htmlObjects = json_decode($post->contents); ?>
+    <article class="pin-block">
+        <?php foreach($htmlObjects as $htmlObj): ?>
+            <div class="msg-block <?php echo $htmlObj->additionalClass; ?>">
+                <div class="msg-meta">
+                    <span class="name"><?php echo $htmlObj->name; ?></span>
+                    <span class="date"><?php echo $htmlObj->date; ?></span>
+                </div>
+                <div class="msg-content">
+                    <?php echo $htmlObj->text; ?>
+                    <?php if(property_exists($htmlObj,'attachment')): ?>
+                        <div class="attachement">
+                            <?php echo $htmlObj->attachment; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+            <div class="msg-close">◟ʕ´∀`ʔ◞ CLOSE  ◟ʕ´∀`ʔ ◞</div>
+    </article>
+<?php
+endforeach;
 ?>
 </section>
 <section class="controller">

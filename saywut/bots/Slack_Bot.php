@@ -135,28 +135,31 @@ class Slack_Bot extends Bot
         {
             try
             {
-                $html = '';
                 if ($pin->type == 'message')
                 {
                     $message = $pin->message;
-                    $html .= $this->_processBeforeMsg($providerCid, $pin);
+                    $htmlObj = $this->_processBeforeMsg($providerCid);
 
-                    $html .= $this->_processMessage($message, 'is-pin');
+                    $htmlObj[] = $this->_processMessage($message, 'is-pin');
 
-                    $html .= $this->_processAfterMsg($providerCid, $pin);
+                    $afterMsgHtmlObj = $this->_processAfterMsg($providerCid);
+                    foreach($afterMsgHtmlObj as $obj)
+                    {
+                        $htmlObj[] = $obj;
+                    }
 
                     $postData['title'] = str_replace(array('<', '>'), '', $message->text);
-                    $postData['content'] = $html;
+                    $postData['content'] = json_encode($htmlObj);
                     $postData['timestamp'] = date(DT_FORMAT, $message->ts);
                 }
 
                 if ($pin->type == 'file')
                 {
                     $file = $pin->file;
-                    $html .= $this->_processFile($file);
+                    $htmlObj = array($this->_processFile($file,'is-pin'));
 
                     $postData['title'] = str_replace(array('<', '>'), '', $file->title);
-                    $postData['content'] = $html;
+                    $postData['content'] = json_encode($htmlObj);
                     $postData['timestamp'] = date(DT_FORMAT, $file->timestamp);
                 }
 
@@ -186,10 +189,10 @@ class Slack_Bot extends Bot
         //$this->_removePins();
     }
 
-    protected function _processBeforeMsg($key,$pin)
+    protected function _processBeforeMsg($key)
     {
         $beforeMessages = array();
-        $html = '';
+        $htmlObjects = array();
         if(!empty($this->pinBeforeMsgs[$key]))
         {
             $beforeMessages = $this->pinBeforeMsgs[$key];
@@ -197,16 +200,23 @@ class Slack_Bot extends Bot
 
         foreach($beforeMessages as $msg)
         {
-            $html .= $this->_processMessage($msg,'before-pin');
+            if($msg->type == 'message')
+            {
+                $htmlObjects[] = $this->_processMessage($msg, 'before-pin');
+            }
+            elseif($msg->type == 'file')
+            {
+                $htmlObjects[] = $this->_processFile($msg,'before-pin');
+            }
         }
 
-        return $html;
+        return $htmlObjects;
     }
 
-    protected function _processAfterMsg($key,$pin)
+    protected function _processAfterMsg($key)
     {
         $afterMessages = array();
-        $html = '';
+        $htmlObjects = array();
         if(!empty($this->pinAfterMsgs[$key]))
         {
             $afterMessages = $this->pinAfterMsgs[$key];
@@ -214,81 +224,82 @@ class Slack_Bot extends Bot
 
         foreach($afterMessages as $msg)
         {
-            $html .= $this->_processMessage($msg,'after-pin');
+            if($msg->type == 'message')
+            {
+                $htmlObjects[] = $this->_processMessage($msg, 'after-pin');
+            }
+            elseif($msg->type == 'file')
+            {
+                $htmlObjects[] = $this->_processFile($msg,'after-pin');
+            }
         }
 
-        return $html;
+        return $htmlObjects;
     }
 
     protected function _processMessage($message,$additionalClass = '')
     {
-        $html = "<div class=\"msg-block {$additionalClass}\">";
+        $htmlObj = new \stdClass();
+        $htmlObj->additionalClass = $additionalClass;
 
-        $html .= "<div class=\"msg-meta\">";
-        $html .= "<span class=\"name\">{$this->_getUser($message,true)}</span><span class=\"date\">".date(DT_FORMAT, $message->ts)."</span>";
-        $html .= "</div>";
+        $htmlObj->name = $this->_getUser($message,true);
+        $htmlObj->date = date(DT_FORMAT, $message->ts);
 
-        $html .= "<div class=\"msg-content\">";
         if(property_exists($message, 'subtype') && $message->subtype == 'pinned_item')
         {
             $attachment = $message->attachments[0];
             $attachment->text = $this->_processText($attachment->text);
             if(property_exists($attachment,'author_icon'))
             {
-                $html .= "pinned <img src=\"{$attachment->author_icon}\"/> {$attachment->author_name}: {$attachment->text}";
+                $htmlObj->text = "pinned <img src=\"{$attachment->author_icon}\"/> {$attachment->author_name}: {$attachment->text}";
             }
-            elseif(property_exists($attachment,'author_surname'))
+            elseif(property_exists($attachment,'author_subname'))
             {
-                $html .= "pinned {$attachment->author_surname}: {$attachment->text}";
+                $htmlObj->text = "pinned {$attachment->author_subname}: {$attachment->text}";
             }
         }
         else
         {
-            $html .= $this->_processText($message->text);
+            $htmlObj->text = $this->_processText($message->text);
 
             if (!empty($message->attachments))
             {
-                $html .= "<div class=\"attachement\">";
                 $attachment = $message->attachments[0];
                 if (property_exists($attachment, 'video_html'))
                 {
                     $videoUrl = str_replace(array('autoplay=1'), '', $attachment->video_html);
-                    $html .= $videoUrl;
+                    $htmlObj->attachment = $videoUrl;
                 } else if (property_exists($attachment, 'audio_html'))
                 {
-                    $html .= $attachment->audio_html;
+                    $htmlObj->attachment = $attachment->audio_html;
                 } else if (property_exists($attachment, 'image_url'))
                 {
-                    $html .= "<img src=\"{$attachment->image_url}\" />";
+                    $htmlObj->attachment = "<img src=\"{$attachment->image_url}\" />";
                 } else if (property_exists($attachment, 'thumb_url'))
                 {
-                    $html .= "<img src=\"{$attachment->thumb_url}\" />";
+                    $htmlObj->attachment = "<img src=\"{$attachment->thumb_url}\" />";
                 }
-
-                if (property_exists($attachment, 'service_name') && $attachment->service_name == 'twitter')
+                else if (property_exists($attachment, 'service_name')
+                    && $attachment->service_name == 'twitter')
                 {
-                    $html .= "<a href=\"{$attachment->author_link}\" ><img src=\"{$attachment->author_icon}\">@";
-                    $html .= "{$attachment->author_name} </a>: {$attachment->text}";
+                    $htmlObj->attachment = "<a href=\"{$attachment->author_link}\" ><img src=\"{$attachment->author_icon}\">@";
+                    $htmlObj->attachment .= "{$attachment->author_name} </a>: {$attachment->text}";
                 }
-                $html .= '</div>';
             }
         }
 
-        $html .= '</div></div>';
-
-        return $html;
+        return $htmlObj;
     }
 
-    protected function _processFile($file)
+    protected function _processFile($file,$additionalClass = '')
     {
-        $html = "<div class=\"msg-block is-pin\">";
+        $htmlObj = new \stdClass();
+        $htmlObj->additionalClass = $additionalClass;
+        $htmlObj->name = $this->_getUser($file,true);
+        $htmlObj->date = date(DT_FORMAT, $file->timestamp);
 
-        $html .= "<div class=\"msg-meta\">";
-        $html .= "<span class=\"name\">{$this->_getUser($file,true)}</span><span class=\"date\">".date(DT_FORMAT, $file->timestamp)."</span>";
-        $html .= "</div>";
 
-        $html .= "<div class=\"msg-content\">";
-        $html .= "<a href=\"{$file->permalink}\">A Slack {$file->pretty_type} File</a>";
+        $htmlObj->text = "<a href=\"{$file->permalink}\">A Slack {$file->pretty_type} File</a>";
         /* Should I link the pic?
         if($file->mimetype == 'image/jpeg' ||
            $file->mimetype == 'image/gif'  ||
@@ -296,11 +307,10 @@ class Slack_Bot extends Bot
            $file->mimetype == 'image/png'
         )
         {
-            $html .= '<div class="attachment"><img src="'.$file->thumb_480.'"/></div>';
+            $htmlObj->attachment .= <img src="'.$file->thumb_480.'"/>;
         }
         */
-        $html .= "</div></div>";
-        return $html;
+        return $htmlObj;
     }
 
     protected function _removePins()
@@ -330,7 +340,12 @@ class Slack_Bot extends Bot
         }
     }
 
-
+    /**
+     * pull user from msg or file object
+     * @param $message
+     * @param bool $withPic
+     * @return string
+     */
     protected function _getUser($message,$withPic = false)
     {
         $rcName = '';
