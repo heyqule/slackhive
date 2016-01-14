@@ -315,8 +315,24 @@ class Slack_Bot extends Bot
 
     protected function _removePins()
     {
+        $removeThreadhold = 50;
+        $dataSize = sizeof($this->data);
+        if($dataSize <= $removeThreadhold)
+        {
+            return;
+        }
+
+        $this->data = array_reverse($this->data);
+        $recToRemove = $dataSize - $removeThreadhold;
+        $i = 0;
         foreach($this->data as $pin)
         {
+            if($i == $recToRemove)
+            {
+                break;
+            }
+            $i++;
+
             if($pin->success == false)
             {
                 continue;
@@ -349,6 +365,8 @@ class Slack_Bot extends Bot
                 $this->api->unPin($request);
             }
         }
+
+        Event::write($this->provider_id,Event::E_INFO,"Removed {$i} pins");
     }
 
     /**
