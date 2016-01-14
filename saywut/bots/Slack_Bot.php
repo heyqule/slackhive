@@ -186,7 +186,7 @@ class Slack_Bot extends Bot
         $postCollection->reindexAll();
 
         //Remove saved pin from slack (TO BE DISCUSS) when success
-        //$this->_removePins();
+        $this->_removePins();
     }
 
     protected function _processBeforeMsg($key)
@@ -327,16 +327,27 @@ class Slack_Bot extends Bot
                 'channel' => Slackbot\Setting::THE_B_CHANNEL,
             );
 
+            $removeId = '';
             if($pin->type == 'message')
             {
                 $request['timestamp'] = $pin->message->ts;
+                $removeId = $request['timestamp'];
             }
             elseif($pin->type == 'file')
             {
                 $request['file'] = $pin->file->id;
+                $removeId = $request['file'];
             }
 
-            $this->api->unPin($request);
+            if(Slackbot\Setting::TEST)
+            {
+                Event::write($this->provider_id,Event::E_INFO,"Test Mode: Remove pin {$removeId}");
+            }
+            else
+            {
+                Event::write($this->provider_id,Event::E_INFO,"Remove pin {$removeId}");
+                $this->api->unPin($request);
+            }
         }
     }
 
