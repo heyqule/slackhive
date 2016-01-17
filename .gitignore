@@ -2,4 +2,4 @@
 saywut/*
 .idea/
 Setting.php
-!saywut/bots/
+!saywut/bots/Slack_Bot.php

@@ -268,6 +268,7 @@ class Slack_Bot extends Bot
                 if (property_exists($attachment, 'video_html'))
                 {
                     $videoUrl = str_replace(array('autoplay=1'), '', $attachment->video_html);
+                    $videoUrl .= str_replace(array('autoplay'), '', $videoUrl);
                     $htmlObj->attachment = $videoUrl;
                 } else if (property_exists($attachment, 'audio_html'))
                 {
