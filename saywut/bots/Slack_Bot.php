@@ -164,6 +164,14 @@ class Slack_Bot extends Bot
                 }
 
                 $post = new Post();
+
+                $post->loadByProdviderId($this->provider_id,$providerCid);
+
+                if($post->id)
+                {
+                    continue;
+                }
+
                 $post->id = null;
                 $post->title = $postData['title'];
                 $post->provider_id = $this->provider_id;
@@ -268,7 +276,7 @@ class Slack_Bot extends Bot
                 if (property_exists($attachment, 'video_html'))
                 {
                     $videoUrl = str_replace(array('autoplay=1'), '', $attachment->video_html);
-                    $videoUrl .= str_replace(array('autoplay'), '', $videoUrl);
+                    $videoUrl = str_replace(array('autoplay'), '', $videoUrl);
                     $htmlObj->attachment = $videoUrl;
                 } else if (property_exists($attachment, 'audio_html'))
                 {
