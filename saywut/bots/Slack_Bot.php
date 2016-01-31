@@ -68,7 +68,6 @@ class Slack_Bot extends Bot
                     break;
             }
             $pinIds[] = $pid;
-            $pin->success = false;
             $this->data[$pid] = $pin;
         }
 
@@ -181,7 +180,6 @@ class Slack_Bot extends Bot
                 $post->update_time = $postData['timestamp'];
                 $post->save();
 
-                $this->data[$providerCid]->success = true;
                 $this->numberChanged++;
             }
             catch(Exception $e)
@@ -341,11 +339,6 @@ class Slack_Bot extends Bot
                 break;
             }
             $i++;
-
-            if($pin->success == false)
-            {
-                continue;
-            }
             
             $request = array(
                 'token' => Slackbot\Setting::API_AUTH_TOKEN,
